@@ -11,6 +11,7 @@ const (
 	ARG_CONST = 1 // const index
 	ARG_REG   = 2 // register index
 	ARG_UPVAL = 4 // upvalue index
+	ARG_BLANK = 8 // blank value
 	ARG_RK    = ARG_REG | ARG_CONST
 	ARG_RU    = ARG_REG | ARG_UPVAL
 	ARG_RUK   = ARG_REG | ARG_UPVAL | ARG_CONST
@@ -293,6 +294,9 @@ func (fi *funcInfo) expToOpArg(node Expression, argKinds int) (arg, argKind int)
 	}
 
 	if nameExp, ok := node.(*NameExp); ok {
+		if nameExp.Name == "_" {
+			return 0, ARG_BLANK
+		}
 		if argKinds&ARG_REG > 0 {
 			if r := fi.slotOfLocVar(nameExp.Name); r >= 0 {
 				return r, ARG_REG

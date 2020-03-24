@@ -82,3 +82,11 @@ func Undump(data []byte) *Prototype {
 	reader.readByte() // size_upvalues
 	return reader.readProto("")
 }
+
+func Dump(proto *Prototype) []byte {
+	writer := &writer{}
+	writer.writeHeader()
+	writer.writeByte(0x01) // size_upvalues
+	writer.writeProto(proto)
+	return writer.data
+}

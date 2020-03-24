@@ -52,6 +52,11 @@ type NoBoolExpression struct{}
 func (exp NoBoolExpression) IsTrue() bool  { return false }
 func (exp NoBoolExpression) IsFalse() bool { return false }
 
+type BlankExp struct { // _
+	FalseExpression
+	Line int
+}
+
 type NilExp struct { // nil
 	FalseExpression
 	Line int

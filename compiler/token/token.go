@@ -214,6 +214,8 @@ func (t TokenType) String() string {
 		return "TOKEN_SEP_RCURLY"
 	case TOKEN_OP_ARROW:
 		return "TOKEN_OP_ARROW"
+	case TOKEN_OP_CONCAT:
+		return "TOKEN_OP_CONCAT"
 	case TOKEN_OP_ASSIGN:
 		return "TOKEN_OP_ASSIGN"
 	case TOKEN_OP_LASSIGN:
@@ -222,10 +224,14 @@ func (t TokenType) String() string {
 		return "TOKEN_OP_MINUS"
 	case TOKEN_OP_SUBEQ:
 		return "TOKEN_OP_SUBEQ"
+	case TOKEN_OP_SUBSELF:
+		return "TOKEN_OP_SUBSELF"
 	case TOKEN_OP_ADD:
 		return "TOKEN_OP_ADD"
 	case TOKEN_OP_ADDEQ:
 		return "TOKEN_OP_ADDEQ"
+	case TOKEN_OP_ADDSELF:
+		return "TOKEN_OP_ADDSELF"
 	case TOKEN_OP_MUL:
 		return "TOKEN_OP_MUL"
 	case TOKEN_OP_MULEQ:

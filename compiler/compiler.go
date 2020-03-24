@@ -12,7 +12,7 @@ func Compile(chunk, chunkName string) *binchunk.Prototype {
 	p := parser.New(l)
 	ast := p.Parse()
 	proto := generator.GenerateProto(ast)
-	setSource(proto, chunkName)
+	setSource(proto, "@"+chunkName)
 	return proto
 }
 
