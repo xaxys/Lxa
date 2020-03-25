@@ -61,9 +61,9 @@ func (fi *funcInfo) getUpvalues() []Upvalue {
 	upvals := make([]Upvalue, len(fi.upvals))
 	for _, uv := range fi.upvals {
 		if uv.locVarSlot >= 0 { // instack
-			upvals[uv.index] = Upvalue{1, byte(uv.locVarSlot)}
+			upvals[uv.index] = Upvalue{Instack: 1, Idx: byte(uv.locVarSlot)}
 		} else {
-			upvals[uv.index] = Upvalue{0, byte(uv.upvalIndex)}
+			upvals[uv.index] = Upvalue{Instack: 0, Idx: byte(uv.upvalIndex)}
 		}
 	}
 	return upvals
