@@ -31,22 +31,62 @@ func OptimizeLogicalQst(exp *UnopExp) Expression {
 	return exp
 }
 
-func OptimizeLogicalOr(exp *BinopExp) Expression {
-	if exp.Exp1.IsTrue() {
-		return exp.Exp1 // true or x => true
-	} else if exp.Exp1.IsFalse() && !isVarargOrFuncCall(exp.Exp2) {
-		return exp.Exp2 // false or x => x
+func OptimizeLogicalOr(exp *LogicalExp) Expression {
+	if exp.ExpList[0].IsTrue() {
+		return exp.ExpList[0]
 	}
-	return exp
+
+	for i, e := range exp.ExpList { // true or x => true
+		if e.IsTrue() {
+			exp.ExpList = exp.ExpList[0 : i+1]
+			if len(exp.ExpList) == 1 {
+				return exp.ExpList[0]
+			} else {
+				return exp
+			}
+		}
+	}
+
+	for i := 0; i < len(exp.ExpList)-1; i++ { // false or x => x
+		if exp.ExpList[i].IsFalse() && !isVarargOrFuncCall(exp.ExpList[i+1]) {
+			exp.ExpList = append(exp.ExpList[0:i], exp.ExpList[i+1:]...)
+		}
+	}
+
+	if len(exp.ExpList) == 1 {
+		return exp.ExpList[0]
+	} else {
+		return exp
+	}
 }
 
-func OptimizeLogicalAnd(exp *BinopExp) Expression {
-	if exp.Exp1.IsFalse() {
-		return exp.Exp1 // false and x => false
-	} else if exp.Exp1.IsTrue() && !isVarargOrFuncCall(exp.Exp2) {
-		return exp.Exp2 // true and x => x
+func OptimizeLogicalAnd(exp *LogicalExp) Expression {
+	if exp.ExpList[0].IsFalse() {
+		return exp.ExpList[0]
 	}
-	return exp
+
+	for i, e := range exp.ExpList { // false and x => false
+		if e.IsFalse() {
+			exp.ExpList = exp.ExpList[0 : i+1]
+			if len(exp.ExpList) == 1 {
+				return exp.ExpList[0]
+			} else {
+				return exp
+			}
+		}
+	}
+
+	for i := 0; i < len(exp.ExpList)-1; i++ { // true and x => x
+		if exp.ExpList[i].IsTrue() && !isVarargOrFuncCall(exp.ExpList[i+1]) {
+			exp.ExpList = append(exp.ExpList[0:i], exp.ExpList[i+1:]...)
+		}
+	}
+
+	if len(exp.ExpList) == 1 {
+		return exp.ExpList[0]
+	} else {
+		return exp
+	}
 }
 
 func OptimizeBitwiseBinaryOp(exp *BinopExp) Expression {

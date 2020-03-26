@@ -145,6 +145,13 @@ func (exp *UnopExp) String() string {
 		exp.Op.Line, exp.Op, exp.Exp)
 }
 
+// (and | or) between expList
+type LogicalExp struct {
+	NoBoolExpression
+	Op      *Token
+	ExpList []Expression
+}
+
 // exp1 op exp2
 type BinopExp struct {
 	NoBoolExpression

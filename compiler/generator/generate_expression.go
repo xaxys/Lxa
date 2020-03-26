@@ -43,6 +43,8 @@ func (fi *funcInfo) generateExpression(node Expression, a, n int) {
 		fi.generateTableConstructorExp(exp, a)
 	case *UnopExp:
 		fi.generateUnopExp(exp, a)
+	case *LogicalExp:
+		fi.generateLogicalExp(exp, a)
 	case *BinopExp:
 		fi.generateBinopExp(exp, a)
 	case *NameExp:
@@ -144,32 +146,40 @@ func (fi *funcInfo) generateUnopExp(node *UnopExp, a int) {
 	fi.usedRegs = oldRegs
 }
 
-// r[a] := exp1 op exp2
-func (fi *funcInfo) generateBinopExp(node *BinopExp, a int) {
-	switch node.Op.Type {
-	case TOKEN_OP_AND, TOKEN_OP_OR:
-		oldRegs := fi.usedRegs
+// r[a] := (and | or) between expList
+func (fi *funcInfo) generateLogicalExp(node *LogicalExp, a int) {
+	var Jmps []int
+	oldRegs := fi.usedRegs
 
-		b, _ := fi.expToOpArg(node.Exp1, ARG_REG)
-		fi.usedRegs = oldRegs
+	b, _ := fi.expToOpArg(node.ExpList[0], ARG_REG)
+	fi.usedRegs = oldRegs
+	for _, exp := range node.ExpList[1:] {
 		if node.Op.Is(TOKEN_OP_AND) {
 			fi.emitTestSet(node.Op.Line, a, b, 0)
 		} else {
 			fi.emitTestSet(node.Op.Line, a, b, 1)
 		}
 		pcOfJmp := fi.emitJmp(node.Op.Line, 0, 0)
+		Jmps = append(Jmps, pcOfJmp)
 
-		b, _ = fi.expToOpArg(node.Exp2, ARG_REG)
-		fi.usedRegs = oldRegs
-		fi.emitMove(node.Op.Line, a, b)
-		fi.fixSbx(pcOfJmp, fi.pc()-pcOfJmp)
-	default:
-		oldRegs := fi.usedRegs
-		b, _ := fi.expToOpArg(node.Exp1, ARG_RK)
-		c, _ := fi.expToOpArg(node.Exp2, ARG_RK)
-		fi.emitBinaryOp(node.Op.Line, node.Op.Type, a, b, c)
+		b, _ = fi.expToOpArg(exp, ARG_REG)
 		fi.usedRegs = oldRegs
 	}
+	for _, pcOfJmp := range Jmps {
+		fi.fixSbx(pcOfJmp, fi.pc()-pcOfJmp)
+	}
+	if b != a {
+		fi.emitMove(node.Op.Line, a, b)
+	}
+}
+
+// r[a] := exp1 op exp2
+func (fi *funcInfo) generateBinopExp(node *BinopExp, a int) {
+	oldRegs := fi.usedRegs
+	b, _ := fi.expToOpArg(node.Exp1, ARG_RK)
+	c, _ := fi.expToOpArg(node.Exp2, ARG_RK)
+	fi.emitBinaryOp(node.Op.Line, node.Op.Type, a, b, c)
+	fi.usedRegs = oldRegs
 }
 
 // r[a] := name

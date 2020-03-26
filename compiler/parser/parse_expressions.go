@@ -56,31 +56,43 @@ func (p *Parser) parseExp13() Expression {
 // x ('||' | or) y
 func (p *Parser) parseExp12() Expression {
 	exp := p.parseExp11()
-	for p.lexer.PeekToken().Is(TOKEN_OP_OR) {
-		op := p.lexer.NextToken()
-		lor := &BinopExp{
-			Op:   op,
-			Exp1: exp,
-			Exp2: p.parseExp11(),
-		}
-		exp = OptimizeLogicalOr(lor)
+	if !p.lexer.PeekToken().Is(TOKEN_OP_OR) {
+		return exp
 	}
-	return exp
+
+	expList := []Expression{exp}
+	var op *Token
+	for p.lexer.PeekToken().Is(TOKEN_OP_OR) {
+		op = p.lexer.NextToken()
+		expList = append(expList, p.parseExp11())
+	}
+	lor := &LogicalExp{
+		Op:      op,
+		ExpList: expList,
+	}
+
+	return OptimizeLogicalOr(lor)
 }
 
 // x ('&&' | and) y
 func (p *Parser) parseExp11() Expression {
 	exp := p.parseExp10()
-	for p.lexer.PeekToken().Is(TOKEN_OP_AND) {
-		op := p.lexer.NextToken()
-		land := &BinopExp{
-			Op:   op,
-			Exp1: exp,
-			Exp2: p.parseExp10(),
-		}
-		exp = OptimizeLogicalAnd(land)
+	if !p.lexer.PeekToken().Is(TOKEN_OP_AND) {
+		return exp
 	}
-	return exp
+
+	expList := []Expression{exp}
+	var op *Token
+	for p.lexer.PeekToken().Is(TOKEN_OP_AND) {
+		op = p.lexer.NextToken()
+		expList = append(expList, p.parseExp10())
+	}
+	land := &LogicalExp{
+		Op:      op,
+		ExpList: expList,
+	}
+
+	return OptimizeLogicalAnd(land)
 }
 
 // compare
