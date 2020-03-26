@@ -118,9 +118,9 @@ func (self *writer) writeConstant(constant interface{}) {
 		self.writeByte(TAG_NUMBER)
 		self.writeLuaNumber(cst)
 	case string:
-		if len(cst) < 254 {
+		if len(cst) > 0 && len(cst) < 254 {
 			self.writeByte(TAG_SHORT_STR)
-		} else {
+		} else if len(cst) >= 254 {
 			self.writeByte(TAG_LONG_STR)
 		}
 		self.writeLuaString(cst)

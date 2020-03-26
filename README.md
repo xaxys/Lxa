@@ -2,29 +2,38 @@
 
 A new programming language based on Lua vm.
 
-I developed it for some learning purpose and It haven't been used in any formal project.
+I developed it for some learning purpose, but it haven't been used in any formal project.
 
 WARNING! Please expect breaking changes and unstable APIs. Most of them are currently at an early, experimental stage.
 
 ## Update
 
-* 2020/03/23 Released Lxa v0.1.0. Use Azure/golua as vm.
-
-* 2020/03/25 Released Lxa v0.2.1. Use Official lua 5.3.5 vm (written in c) as defualt vm. Added inner go lua vm as a option (several stdlib unsupported yet). Added Compile Only option to output compiled lua bytecode (since v0.2.0). Added linux support and x86 support (auto select static lib when compiling) (untested). 
-
-* 2020/03/26 Released Lxa v0.2.4. Added Debug option for more details in running. Added Parse Only option for watch bytecode. Optimized Logical Expression generation, multiple `and` and `or` expressions are handled sepecially apart from Binary Opration Expression.
+* 2020/03/23 Released Lxa v0.1.0. 
+  * Use Azure/golua as vm.
+* 2020/03/25 Released Lxa v0.2.1. 
+  * Use Official lua 5.3.5 vm (written in c) as default vm.
+  * Added inner go lua vm as a option (several stdlib unsupported yet).
+  * Added 'Compile Only' option to output compiled lua bytecode (since v0.2.0).
+  * Added linux support and x86 support (auto select static lib when compiling) (untested). 
+* 2020/03/26 Released Lxa v0.2.4.
+  * Added Debug option to display details in running.
+  * Added 'Parse Only' option to watch bytecode instructions.
+  * Optimized Logical Expression generation, now multiple `and` and `or` expressions are specially handled apart from Binary Opration Expression.
+  * Fixed bug of 0 length lua string in bytecode.
 
 ## Syntax
 
-Lxa has c-formed syntax with lua-based variable and data structure. Anyone who familiar with C/C++/Java/Go can easily use it.
+Lxa has c-formed syntax with lua-based variable and data structure. Anyone who is familiar with C/C++/Java/Go can easily use it.
 
 You can follow these examples or look EBNF below directly.
 
 ### Lexical Conventions
 
-Free-style Code, Basically the same as Lua.
+Free-style Code, basically the same as Lua.
 
-`;` is not necessary in the end of a sentence, `\n` will be recognized as equal as `;`. 
+`;` is not necessary in the end of a sentence.
+
+`\n` will be recognized as equal as `;`. 
 
 `&&`,`||`,`!` can be also used as `and`, `or`,`not`
 
@@ -40,7 +49,7 @@ Added `?` to judge if a number = 0 or a string length = 0.
 
 Use `{` and `}` to recognize code block.
 
-(WARNING: Because `\n` will be recognized as equal as `;`, `{` is only allowed appealed in the end of a line)
+(WARNING: Because `\n` will be recognized as equal as `;`, `{` is not allowed appeared in the next line)
 
 Use `//` and `/* */` to comment.
 
@@ -150,7 +159,6 @@ Other Lua feature are supported.
 
 ```
 chunk ::= block
-type Chunk *Block
 
 block ::= {stat} [retstat]
 retstat ::= return [explist] [';']
