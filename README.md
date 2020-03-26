@@ -8,9 +8,11 @@ WARNING! Please expect breaking changes and unstable APIs. Most of them are curr
 
 ## Update
 
-* 2020/03/23 Relesed Lxa v0.1.0. Use Azure/golua as vm.
+* 2020/03/23 Released Lxa v0.1.0. Use Azure/golua as vm.
 
-* 2020/03/25 Relesed Lxa v0.2.1. Use Official lua 5.3.5 vm (written in c) as defualt vm. Added inner go lua vm as a option (several stdlib unsupported yet). Added Compile Only option to output compiled lua bytecode (since v0.2.0). Added linux support and x86 support (auto select static lib when compiling) (untested). 
+* 2020/03/25 Released Lxa v0.2.1. Use Official lua 5.3.5 vm (written in c) as defualt vm. Added inner go lua vm as a option (several stdlib unsupported yet). Added Compile Only option to output compiled lua bytecode (since v0.2.0). Added linux support and x86 support (auto select static lib when compiling) (untested). 
+
+* 2020/03/26 Released Lxa v0.2.4. Added Debug option for more details in running. Added Parse Only option for watch bytecode. Optimized Logical Expression generation, multiple `and` and `or` expressions are handled sepecially apart from Binary Opration Expression.
 
 ## Syntax
 
@@ -20,11 +22,11 @@ You can follow these examples or look EBNF below directly.
 
 ### Lexical Conventions
 
-Basically the same as Lua.
+Free-style Code, Basically the same as Lua.
 
-Free-style Code, `;` is not necessary in the end of a sentence, but `\n` will be recognized as equal as `;`. 
+`;` is not necessary in the end of a sentence, `\n` will be recognized as equal as `;`. 
 
-But `&&`,`||`,`!` can be also used as `and`, `or`,`not`
+`&&`,`||`,`!` can be also used as `and`, `or`,`not`
 
 Removed `::`, `goto`, `repeat` ,`until` ,`do`,`elseif`,`end`,`then`
 
@@ -212,4 +214,4 @@ stat ::= ';'
 
 ## About
 
-Contact me: E-mail: <gz@oasis.run>, QQ: <963796543>, WebSite: <http://www.oasis.run>
+Contact me: E-mail: gz@oasis.run, QQ: 963796543, WebSite: http://www.oasis.run

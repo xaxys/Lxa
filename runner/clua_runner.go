@@ -3,13 +3,13 @@ package runner
 /*
 #ifdef _WIN32
 	#include<Windows.h>
-#ifdef _WIN64
-    #cgo CFLAGS: -I ../lua-5.3.5_WIN64/include -std=gnu99
-	#cgo LDFLAGS: -L ../lua-5.3.5_WIN64 -static -llua53
-#else
-    #cgo CFLAGS: -I ../lua-5.3.5_WIN32/include -std=gnu99
-	#cgo LDFLAGS: -L ../lua-5.3.5_WIN32 -static -llua53
-#endif
+	#ifdef _WIN64
+		#cgo CFLAGS: -I ../lua-5.3.5_WIN64/include -std=gnu99
+   		#cgo LDFLAGS: -L ../lua-5.3.5_WIN64 -static -llua53
+	#else
+		#cgo CFLAGS: -I ../lua-5.3.5_WIN32/include -std=gnu99
+		#cgo LDFLAGS: -L ../lua-5.3.5_WIN32 -static -llua53
+	#endif
 #else
 	#cgo CFLAGS: -I ../lua-5.3.5_Linux/include -std=gnu99
 	#cgo LDFLAGS: -L ../lua-5.3.5_Linux -static -llua53
@@ -59,18 +59,18 @@ static int report (lua_State *L, int status) {
 
 void run_binaryscript (const char *s, const int len, const char *pname) {
 #ifdef _WIN32
-	SetConsoleOutputCP(65001);
+	SetConsoleOutputCP(65001); // utf8 output support
 #endif
 	progname = pname;
 	lua_State *L = luaL_newstate();
 	if (L == NULL) {
-		lua_writestringerror("%s\n", "cannot create state: not enough memory");
+		l_message(progname, "cannot create state: not enough memory");
 	}
 	luaL_openlibs(L);
 	lua_pushcfunction(L, msghandler);
 	int status = luaL_loadbuffer(L, s, len, s);
 	if (status == LUA_OK) {
-		lua_pcall(L, 0, LUA_MULTRET, 0);
+		status = lua_pcall(L, 0, LUA_MULTRET, 0);
 	}
 	report(L, status);
 	lua_close(L);

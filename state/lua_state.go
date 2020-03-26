@@ -1,8 +1,11 @@
 package state
 
-import . "lxa/api"
+import (
+	. "lxa/api"
+)
 
 type luaState struct {
+	debug    bool
 	registry *luaTable
 	stack    *luaStack
 	/* coroutine */
@@ -12,7 +15,11 @@ type luaState struct {
 }
 
 func New() LuaState {
-	ls := &luaState{}
+	return NewState(false)
+}
+
+func NewState(debug bool) LuaState {
+	ls := &luaState{debug: debug}
 
 	registry := newLuaTable(8, 0)
 	registry.put(LUA_RIDX_MAINTHREAD, ls)

@@ -6,11 +6,13 @@ import (
 )
 
 func (p *Parser) parseBlock() *Block {
-	return &Block{
+	// Directly use return &Block{...} Here will cause a strange bug in delve.
+	block := &Block{
 		Statements: p.parseStatements(),
 		ReturnExps: p.parseReturnExps(),
 		LastLine:   p.lexer.Line(),
 	}
+	return block
 }
 
 func (p *Parser) parseStatements() []Statement {

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	. "lxa/api"
 	"lxa/binchunk"
 	"lxa/compiler"
@@ -111,6 +112,24 @@ func (self *luaState) callLuaClosure(nArgs, nResults int, c *closure) {
 func (self *luaState) runLuaClosure() {
 	for {
 		inst := vm.Instruction(self.Fetch())
+
+		if self.debug {
+			switch inst.OpMode() {
+			case vm.IABC:
+				a, b, c := inst.ABC()
+				fmt.Println("vm @", self.stack.pc-1, inst.OpName(), "A =", a, "B =", b, "C =", c)
+			case vm.IABx:
+				a, bx := inst.ABx()
+				fmt.Println("vm @", self.stack.pc-1, inst.OpName(), "A =", a, "BX =", bx)
+			case vm.IAsBx:
+				a, sbx := inst.AsBx()
+				fmt.Println("vm @", self.stack.pc-1, inst.OpName(), "A =", a, "SBX =", sbx)
+			case vm.IAx:
+				ax := inst.Ax()
+				fmt.Println("vm @", self.stack.pc-1, inst.OpName(), "AX =", ax)
+			}
+		}
+
 		inst.Execute(self)
 		if inst.Opcode() == vm.OP_RETURN {
 			break
