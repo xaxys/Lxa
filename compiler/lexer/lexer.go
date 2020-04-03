@@ -70,11 +70,10 @@ func (l *Lexer) NextIdentifier() *Token {
 func (l *Lexer) NextTokenOfType(tokenType ...TokenType) *Token {
 	token := l.NextToken()
 	if !token.Is(tokenType...) {
-		l.error("syntax error near '%s'", token.Literal)
-		return &Token{l.line, TOKEN_ILLEGAL, ""}
-	} else {
-		return token
+		l.Error("unexpected symbol near '%s', expect '%s', but got '%s'",
+			token.Literal, tokenTypeString(tokenType), token.Literal)
 	}
+	return token
 }
 
 // PeekTokenN returns a slice of token before specified type
@@ -91,7 +90,8 @@ func (l *Lexer) PeekTokenOfType(tokenType ...TokenType) []*Token {
 		token = l.PeekTokenN(i)
 	}
 	if token.Is(TOKEN_EOF) && !token.Is(tokenType...) {
-		l.error("syntax error near '%s'", token.Literal)
+		l.Error("unexpected symbol near '%s', expect '%s', but got '%s'",
+			token.Literal, tokenTypeString(tokenType), token.Literal)
 	}
 	return l.tokenCache[0:i]
 }
@@ -144,7 +144,7 @@ func (l *Lexer) nextToken(useCache bool) *Token {
 	case '\n': // peek: \n
 		l.read(1)
 		l.line++
-		return &Token{l.line - 1, TOKEN_SEP_EOLN, "\n"}
+		return &Token{l.line - 1, TOKEN_SEP_EOLN, "<end-of-line>"}
 	case ';': // peek: ;
 		l.read(1)
 		return &Token{l.line, TOKEN_SEP_SEMI, ";"}
@@ -172,7 +172,7 @@ func (l *Lexer) nextToken(useCache bool) *Token {
 	case ':':
 		if l.peekChar() == '=' { // peek: :=
 			l.read(2)
-			return &Token{l.line, TOKEN_OP_LASSIGN, ":="}
+			return &Token{l.line, TOKEN_OP_LOCASSIGN, ":="}
 		} else { // peek: :
 			l.read(1)
 			return &Token{l.line, TOKEN_SEP_COLON, ":"}
@@ -372,7 +372,7 @@ func (l *Lexer) nextToken(useCache bool) *Token {
 	}
 
 	l.read(1)
-	l.error("unexpected symbol near %s", string(ch))
+	l.Error("unexpected symbol near %s", string(ch))
 	return &Token{l.line, TOKEN_ILLEGAL, string(ch)}
 }
 
@@ -417,7 +417,7 @@ func (l *Lexer) scan(re *regexp.Regexp) string {
 		l.readRaw(len(token))
 		return token
 	}
-	l.error("unreachable!")
+	l.Error("unreachable!")
 	return ""
 }
 
@@ -430,7 +430,7 @@ func (l *Lexer) skipLine() {
 func (l *Lexer) skipLongComment() {
 	closingIdx := strings.Index(l.chunk, "*/")
 	if closingIdx < 0 {
-		l.error("unfinished comment")
+		l.Error("unfinished comment")
 	}
 	s := l.chunk[0:closingIdx]
 	l.readRaw(closingIdx + 2)
@@ -440,7 +440,7 @@ func (l *Lexer) skipLongComment() {
 func (l *Lexer) peekChar() rune {
 	c, n := utf8.DecodeRuneInString(l.chunk[l.peekPos:])
 	if n == 0 {
-		l.error("invalid character!")
+		l.Error("invalid character!")
 	}
 	l.peekPos++
 	return c
@@ -464,7 +464,7 @@ func (l *Lexer) readRaw(n int) {
 func (l *Lexer) readChar() rune {
 	c, n := utf8.DecodeRuneInString(l.chunk)
 	if n == 0 {
-		l.error("invalid character!")
+		l.Error("invalid character!")
 	}
 	l.readRaw(n)
 	return c
@@ -474,7 +474,7 @@ func (l *Lexer) readLongString() string {
 	l.readRaw(1)
 	closingIdx := strings.Index(l.chunk, "`")
 	if closingIdx < 0 {
-		l.error("unfinished long string")
+		l.Error("unfinished long string")
 	}
 	s := l.chunk[0:closingIdx]
 	l.readRaw(closingIdx + 1)
@@ -498,7 +498,7 @@ func (l *Lexer) readShortString(end string) string {
 		}
 		return s
 	}
-	l.error("unfinished string")
+	l.Error("unfinished string")
 	return ""
 }
 
@@ -517,7 +517,7 @@ func (l *Lexer) escape(s string) string {
 		}
 
 		if len(s) == 1 {
-			l.error("unfinished string")
+			l.Error("unfinished string")
 		}
 
 		switch s[1] {
@@ -569,7 +569,7 @@ func (l *Lexer) escape(s string) string {
 					s = s[len(found):]
 					continue
 				}
-				l.error("decimal escape too large near '%s'", found)
+				l.Error("decimal escape too large near '%s'", found)
 			}
 		case 'x': // \xXX
 			if found := reHexEscapeSeq.FindString(s); found != "" {
@@ -586,7 +586,7 @@ func (l *Lexer) escape(s string) string {
 					s = s[len(found):]
 					continue
 				}
-				l.error("UTF-8 value too large near '%s'", found)
+				l.Error("UTF-8 value too large near '%s'", found)
 			}
 		case 'z':
 			s = s[2:]
@@ -595,7 +595,7 @@ func (l *Lexer) escape(s string) string {
 			}
 			continue
 		}
-		l.error("invalid escape sequence near '\\%c'", s[1])
+		l.Error("invalid escape sequence near '\\%c'", s[1])
 	}
 
 	return buf.String()
@@ -609,9 +609,17 @@ func isWhiteSpace(c byte) bool {
 	return false
 }
 
-func (l *Lexer) error(f string, a ...interface{}) {
+func (l *Lexer) Error(f string, a ...interface{}) {
 	err := fmt.Sprintf(f, a...)
-	fmt.Fprintln(os.Stderr, "Lexical Error Occurred:")
-	fmt.Fprintln(os.Stderr, fmt.Sprintf("%s:%d: %s", l.ChunkName(), l.Line(), err))
+	fmt.Fprintln(os.Stderr, "Syntax Error Occurred:")
+	fmt.Fprintln(os.Stderr, fmt.Sprintf("Error @ %s:%d: %s", l.ChunkName(), l.Line(), err))
 	os.Exit(0)
+}
+
+func tokenTypeString(tokenType []TokenType) string {
+	var s string
+	for _, t := range tokenType {
+		s += fmt.Sprint(t)
+	}
+	return s
 }

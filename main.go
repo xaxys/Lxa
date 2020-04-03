@@ -34,7 +34,7 @@ func main() {
 		for _, filename := range flag.Args() {
 			chunk, err := ioutil.ReadFile(filename)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "reading %s: %v", filename, err)
+				fmt.Fprintf(os.Stderr, "reading %s: %s", filename, err)
 			}
 			if PARSE {
 				if binchunk.IsBinaryChunk(chunk) {
@@ -57,19 +57,19 @@ func main() {
 				if GOLUA && !CLUA || DEBUG {
 					runner.GoRunBinary(data, filename, DEBUG)
 				} else {
-					runner.CRunBinary(data, filename)
+					runner.CRunBinary(data, PROGNAME)
 				}
 			}
 		}
 	} else {
 		fmt.Println("Oops! No input files given.")
-		fmt.Println("Lxa 0.2.4 2020.03.26 Copyright (C) 2020 xaxys.")
+		fmt.Println("Lxa 0.2.6 2020.04.03 Copyright (C) 2020 xaxys.")
 		fmt.Println("usage:", PROGNAME, "[options] [script]")
 		fmt.Println("avaliable options are:")
 		fmt.Println("  -c    ", "Compile a lxa file to lua bytecode without running")
 		fmt.Println("  -g    ", "Enable verbose logging and tracing (golua vm only)")
 		fmt.Println("  -p    ", "Parse and Print lua bytecode without running")
 		fmt.Println("  -golua", "Use inner golua vm for excuting (several stdlib unsupported yet)")
-		fmt.Println("  -clua ", "Use inner official clua 5.3.5 vm for excuting (Default VM)")
+		fmt.Println("  -clua ", "Use inner official clua 5.3.5 vm for excuting (default vm)")
 	}
 }

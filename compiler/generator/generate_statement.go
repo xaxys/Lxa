@@ -6,6 +6,8 @@ import (
 
 func (fi *funcInfo) generateStatement(node Statement) {
 	switch stat := node.(type) {
+	case *BlockStat:
+		fi.generateBlockStat(stat)
 	case *BreakStat:
 		fi.generateBreakStat(stat)
 	case *ContinueStat:
@@ -17,8 +19,18 @@ func (fi *funcInfo) generateStatement(node Statement) {
 	case *ForInStat:
 		fi.generateForInStat(stat)
 	case *AssignmentStat:
-		fi.generateAssignment(stat.Asn)
+		fi.generateAssignmentStat(stat)
+	case *FuncCallStat:
+		fi.generateFuncCallStat(stat)
+	case *LocVarDeclStat:
+		fi.generateLocVarDeclStat(stat)
 	}
+}
+
+func (fi *funcInfo) generateBlockStat(node *BlockStat) {
+	fi.enterScope(false)
+	fi.generateBlock(node.Block)
+	fi.exitScope(fi.pc() + 1)
 }
 
 func (fi *funcInfo) generateBreakStat(node *BreakStat) {
@@ -43,8 +55,8 @@ while exp { block } <-'
 func (fi *funcInfo) generateLoopStat(node *LoopStat) {
 	fi.enterScope(true)
 
-	for _, asn := range node.AsnList {
-		fi.generateAssignment(asn)
+	for _, stat := range node.InitList {
+		fi.generateStatement(stat)
 	}
 
 	pcBeforeExp := fi.pc()
@@ -60,8 +72,8 @@ func (fi *funcInfo) generateLoopStat(node *LoopStat) {
 	fi.generateBlock(node.Block)
 	fi.closeOpenUpvals(node.Block.LastLine)
 	fi.setContinueJmp()
-	if node.StepAsn != nil {
-		fi.generateAssignment(node.StepAsn)
+	if node.StepStat != nil {
+		fi.generateStatement(node.StepStat)
 	}
 	fi.emitJmp(node.Block.LastLine, 0, pcBeforeExp-fi.pc()-1)
 	fi.exitScope(fi.pc())
@@ -89,8 +101,8 @@ func (fi *funcInfo) generateIfStat(node *IfStat) {
 
 		fi.enterScope(false)
 
-		for _, asn := range sub.AsnList {
-			fi.generateAssignment(asn)
+		for _, stat := range sub.InitList {
+			fi.generateStatement(stat)
 		}
 
 		oldRegs := fi.usedRegs
@@ -124,7 +136,7 @@ func (fi *funcInfo) generateForInStat(node *ForInStat) {
 
 	fi.enterScope(true)
 
-	fi.generateAssignment(&LocVarDeclAsn{
+	fi.generateLocVarDeclStat(&LocVarDeclStat{
 		//LastLine: 0,
 		NameList: []string{forGeneratorVar, forStateVar, forControlVar},
 		ExpList:  node.ExpList,
@@ -148,4 +160,158 @@ func (fi *funcInfo) generateForInStat(node *ForInStat) {
 	fi.fixEndPC(forGeneratorVar, 2)
 	fi.fixEndPC(forStateVar, 2)
 	fi.fixEndPC(forControlVar, 2)
+}
+
+func (fi *funcInfo) generateFuncCallStat(node *FuncCallStat) {
+	r := fi.preAllocReg()
+	fi.generateFuncCallExp(node, r, 0)
+	fi.checkAllocReg(r)
+	fi.freeReg()
+}
+
+func (fi *funcInfo) generateLocVarDeclStat(node *LocVarDeclStat) {
+	exps := removeTailNils(node.ExpList)
+	nExps := len(exps)
+	nNames := len(node.NameList)
+
+	oldRegs := fi.usedRegs
+	if nExps == nNames {
+		for _, exp := range exps {
+			a := fi.preAllocReg()
+			fi.generateExpression(exp, a, 1)
+			fi.checkAllocReg(a)
+		}
+	} else if nExps > nNames {
+		for i, exp := range exps {
+			a := fi.preAllocReg()
+			if i == nExps-1 && isVarargOrFuncCall(exp) {
+				fi.generateExpression(exp, a, 0)
+			} else {
+				fi.generateExpression(exp, a, 1)
+			}
+			fi.checkAllocReg(a)
+		}
+	} else { // nNames > nExps
+		multRet := false
+		for i, exp := range exps {
+			a := fi.preAllocReg()
+			if i == nExps-1 && isVarargOrFuncCall(exp) {
+				multRet = true
+				n := nNames - nExps + 1
+				fi.generateExpression(exp, a, n)
+				fi.allocRegs(n - 1)
+			} else {
+				fi.generateExpression(exp, a, 1)
+			}
+			fi.checkAllocReg(a)
+		}
+		if !multRet {
+			n := nNames - nExps
+			a := fi.allocRegs(n)
+			fi.emitLoadNil(node.LastLine, a, n)
+		}
+	}
+
+	fi.usedRegs = oldRegs
+	startPC := fi.pc() + 1
+	for _, name := range node.NameList {
+		fi.addLocVar(name, startPC)
+	}
+}
+
+func (fi *funcInfo) generateAssignmentStat(node *AssignmentStat) {
+	exps := removeTailNils(node.ExpList)
+	nExps := len(exps)
+	nVars := len(node.VarList)
+
+	tRegs := make([]int, nVars)
+	kRegs := make([]int, nVars)
+	vRegs := make([]int, nVars)
+	oldRegs := fi.usedRegs
+
+	for i, exp := range node.VarList {
+		if taExp, ok := exp.(*TableAccessExp); ok {
+			tRegs[i] = fi.preAllocReg()
+			fi.generateExpression(taExp.PrefixExp, tRegs[i], 1)
+			fi.checkAllocReg(tRegs[i])
+			kRegs[i] = fi.preAllocReg()
+			fi.generateExpression(taExp.KeyExp, kRegs[i], 1)
+			fi.checkAllocReg(kRegs[i])
+		} else {
+			name := exp.(*NameExp).Name
+			if fi.slotOfLocVar(name) < 0 && fi.upvalIndex(name) < 0 {
+				// global var
+				kRegs[i] = -1
+				if fi.constantIndex(name) > 0xFF {
+					kRegs[i] = fi.allocReg()
+				}
+			}
+		}
+	}
+	for i := 0; i < nVars; i++ {
+		vRegs[i] = fi.usedRegs + i
+	}
+
+	if nExps >= nVars {
+		for i, exp := range exps {
+			a := fi.preAllocReg()
+			if i >= nVars && i == nExps-1 && isVarargOrFuncCall(exp) {
+				fi.generateExpression(exp, a, 0)
+			} else {
+				fi.generateExpression(exp, a, 1)
+			}
+			fi.checkAllocReg(a)
+		}
+	} else { // nVars > nExps
+		multRet := false
+		for i, exp := range exps {
+			a := fi.allocReg()
+			if i == nExps-1 && isVarargOrFuncCall(exp) {
+				multRet = true
+				n := nVars - nExps + 1
+				fi.generateExpression(exp, a, n)
+				fi.allocRegs(n - 1)
+			} else {
+				fi.generateExpression(exp, a, 1)
+			}
+			fi.checkAllocReg(a)
+		}
+		if !multRet {
+			n := nVars - nExps
+			a := fi.allocRegs(n)
+			fi.emitLoadNil(node.LastLine, a, n)
+		}
+	}
+
+	lastLine := node.LastLine
+	for i, exp := range node.VarList {
+		if nameExp, ok := exp.(*NameExp); ok {
+			varName := nameExp.Name
+			if a := fi.slotOfLocVar(varName); a >= 0 {
+				fi.emitMove(lastLine, a, vRegs[i])
+			} else if b := fi.upvalIndex(varName); b >= 0 {
+				fi.emitSetUpval(lastLine, vRegs[i], b)
+			} else if a := fi.slotOfLocVar("_ENV"); a >= 0 {
+				if kRegs[i] < 0 {
+					b := 0x100 + fi.constantIndex(varName)
+					fi.emitSetTable(lastLine, a, b, vRegs[i])
+				} else {
+					fi.emitSetTable(lastLine, a, kRegs[i], vRegs[i])
+				}
+			} else { // global var
+				a := fi.upvalIndex("_ENV")
+				if kRegs[i] < 0 {
+					b := 0x100 + fi.constantIndex(varName)
+					fi.emitSetTabUp(lastLine, a, b, vRegs[i])
+				} else {
+					fi.emitSetTabUp(lastLine, a, kRegs[i], vRegs[i])
+				}
+			}
+		} else {
+			fi.emitSetTable(lastLine, tRegs[i], kRegs[i], vRegs[i])
+		}
+	}
+
+	// todo
+	fi.usedRegs = oldRegs
 }

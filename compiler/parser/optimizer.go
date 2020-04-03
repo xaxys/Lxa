@@ -39,17 +39,14 @@ func OptimizeLogicalOr(exp *LogicalExp) Expression {
 	for i, e := range exp.ExpList { // true or x => true
 		if e.IsTrue() {
 			exp.ExpList = exp.ExpList[0 : i+1]
-			if len(exp.ExpList) == 1 {
-				return exp.ExpList[0]
-			} else {
-				return exp
-			}
 		}
 	}
 
-	for i := 0; i < len(exp.ExpList)-1; i++ { // false or x => x
-		if exp.ExpList[i].IsFalse() && !isVarargOrFuncCall(exp.ExpList[i+1]) {
+	for i := 0; i < len(exp.ExpList)-1; { // false or x => x
+		if exp.ExpList[i].IsFalse() {
 			exp.ExpList = append(exp.ExpList[0:i], exp.ExpList[i+1:]...)
+		} else {
+			i++
 		}
 	}
 
@@ -68,17 +65,14 @@ func OptimizeLogicalAnd(exp *LogicalExp) Expression {
 	for i, e := range exp.ExpList { // false and x => false
 		if e.IsFalse() {
 			exp.ExpList = exp.ExpList[0 : i+1]
-			if len(exp.ExpList) == 1 {
-				return exp.ExpList[0]
-			} else {
-				return exp
-			}
 		}
 	}
 
-	for i := 0; i < len(exp.ExpList)-1; i++ { // true and x => x
-		if exp.ExpList[i].IsTrue() && !isVarargOrFuncCall(exp.ExpList[i+1]) {
+	for i := 0; i < len(exp.ExpList)-1; { // true and x => x
+		if exp.ExpList[i].IsTrue() {
 			exp.ExpList = append(exp.ExpList[0:i], exp.ExpList[i+1:]...)
+		} else {
+			i++
 		}
 	}
 

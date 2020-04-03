@@ -100,7 +100,7 @@ func (fi *funcInfo) constantIndex(k interface{}) int {
 
 func (fi *funcInfo) allocReg() int {
 	fi.usedRegs++
-	if fi.usedRegs >= 255 {
+	if fi.usedRegs >= REG_SIZE {
 		panic("function or expression needs too many registers")
 	}
 	if fi.usedRegs > fi.maxRegs {
@@ -110,7 +110,7 @@ func (fi *funcInfo) allocReg() int {
 }
 
 func (fi *funcInfo) preAllocReg() int {
-	if fi.usedRegs+1 >= 255 {
+	if fi.usedRegs+1 >= REG_SIZE {
 		panic("function or expression needs too many registers")
 	}
 	if fi.usedRegs+1 > fi.maxRegs {
