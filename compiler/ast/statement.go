@@ -20,37 +20,19 @@ type Statements struct {
 type EmptyStat struct{}              // ';'
 type BreakStat struct{ Line int }    // break
 type ContinueStat struct{ Line int } // continue
-type AssignmentStat struct {         // assignment
-	Asn Assignment
-}
-
-type LoopStat struct {
-	AsnList []Assignment
-	Exp     Expression
-	StepAsn Assignment
-	Block   *Block
-}
 
 // while {assignment ';'} exp '{' block '}' => LoopStat
-/*
-type WhileStat struct {
-	AsnList []Assignment
-	Exp     Expression
-	Block   *Block
-}
-*/
-
 // for assignment ';' exp ';' assignment '{' block '}' => LoopStat
-/*
-type ForNumStat struct {
-	LineFor   int
-	LineBlock int
-	InitAsn   Assignment
-	LimitExp  Expression
-	StepAsn   Assignment
-	Block     *Block
+type LoopStat struct {
+	InitList []Statement
+	Exp      Expression
+	StepStat Statement
+	Block    *Block
 }
-*/
+
+type BlockStat struct {
+	Block *Block
+}
 
 // for namelist in explist '{' block '}'
 // namelist ::= Name {',' Name}
@@ -69,7 +51,28 @@ type IfStat struct {
 
 // {stat ';'} exp '{' block '}'
 type SubIfStat struct {
-	AsnList []Assignment
-	Exp     Expression
-	Block   *Block
+	InitList []Statement
+	Exp      Expression
+	Block    *Block
+}
+
+type FuncCallStat = FuncCallExp // functioncall
+
+// varlist ('+=' | '-=' | '*=' | '/=' | '~/=' | '%='
+//		| '&=' | '^=' | '|=' | '**=' | '<<=' | '>>=' | '=') explist
+// varlist ::= var {',' var}
+// var ::=  Name | prefixexp '[' exp ']' | prefixexp '.' Name
+type AssignmentStat struct {
+	LastLine int
+	VarList  []Expression
+	ExpList  []Expression
+}
+
+// namelist ':=' explist | local namelist [':=' explist]
+// namelist ::= Name {',' Name}
+// explist ::= exp {',' exp}
+type LocVarDeclStat struct {
+	LastLine int
+	NameList []string
+	ExpList  []Expression
 }

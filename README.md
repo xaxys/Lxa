@@ -8,9 +8,9 @@ WARNING! Please expect breaking changes and unstable APIs. Most of them are curr
 
 ## Update
 
-* 2020/03/23 Released Lxa v0.1.0. 
+* 2020/03/23 Released Lxa v0.1.0.
   * Use Azure/golua as vm.
-* 2020/03/25 Released Lxa v0.2.1. 
+* 2020/03/25 Released Lxa v0.2.1.
   * Use Official lua 5.3.5 vm (written in c) as default vm.
   * Added inner go lua vm as a option (several stdlib unsupported yet).
   * Added 'Compile Only' option to output compiled lua bytecode (since v0.2.0).
@@ -18,8 +18,16 @@ WARNING! Please expect breaking changes and unstable APIs. Most of them are curr
 * 2020/03/26 Released Lxa v0.2.4.
   * Added Debug option to display details in running.
   * Added 'Parse Only' option to watch bytecode instructions.
-  * Optimized Logical Expression generation, now multiple `and` and `or` expressions are specially handled apart from Binary Opration Expression.
+  * Optimized Logical Expression generation, now multiple `and` and `or` expressions are specially handled apart from Binary Expression.
   * Fixed bug of 0 length lua string in bytecode.
+* 2020/03/27 Updated to Lxa v0.2.5.
+  * Optimized Logical Expression Handling.
+  * Optimized Syntax Error Information.
+* 2020/04/03 Released Lxa v0.2.6.
+  * Optimized Syntax Error Information.
+  * Removed `Assignment` from ast.
+  * Added `BlockStat` for sub code block in syntax.
+  * Fixed bug caused by `EmptyStat` in `ForNumStat`, `WhileStat` and `IfStat`.
 
 ## Syntax
 
@@ -73,7 +81,7 @@ a, b, c := 1, 2, 3 //the same
 
 The first statement is the same as Lua.
 
-The second golang-like statement is also supported which performs the same.
+The second go-like statement is also supported which performs the same.
 
 ### Statement
 
@@ -222,4 +230,4 @@ stat ::= ';'
 
 ## About
 
-Contact me: E-mail: gz@oasis.run, QQ: 963796543, WebSite: http://www.oasis.run
+Contact me: E-mail: gz@oasis.run, QQ: 963796543, WebSite: [http://www.oasis.run](http://www.oasis.run)

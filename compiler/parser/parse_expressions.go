@@ -304,7 +304,7 @@ func (p *Parser) parseNumberExp() Expression {
 			Val:  f,
 		}
 	} else {
-		p.error("not a number: %v", token)
+		p.Error("not a number: %s", token)
 	}
 	panic("unreachable")
 }

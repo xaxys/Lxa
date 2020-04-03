@@ -23,9 +23,9 @@ type Parser struct {
 	// Mode        ParserMode
 }
 
-func New(l *lexer.Lexer) *Parser {
+func New(chunk, chunkName string) *Parser {
 	p := &Parser{
-		lexer: l,
+		lexer: lexer.New(chunk, chunkName),
 	}
 	return p
 }
@@ -36,9 +36,12 @@ func (p *Parser) Parse() *Block {
 	return block
 }
 
-func (p *Parser) error(f string, a ...interface{}) {
+func (p *Parser) Error(f string, a ...interface{}) {
+	p.lexer.Error(f, a...)
+}
+
+func (p *Parser) Warn(f string, a ...interface{}) {
 	err := fmt.Sprintf(f, a...)
-	fmt.Fprintln(os.Stderr, "Syntax Error Occurred:")
-	fmt.Fprintln(os.Stderr, fmt.Sprintf("%s:%d: %s", p.lexer.ChunkName(), p.lexer.Line(), err))
+	fmt.Fprintln(os.Stderr, fmt.Sprintf("Warning @ %s:%d: %s", p.lexer.ChunkName(), p.lexer.Line(), err))
 	os.Exit(0)
 }

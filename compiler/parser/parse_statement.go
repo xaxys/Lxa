@@ -22,6 +22,8 @@ func (p *Parser) parseStatement() Statement {
 	switch p.lexer.PeekToken().Type {
 	case TOKEN_SEP_SEMI, TOKEN_SEP_EOLN: // EmptyStat
 		return p.parseEmptyStat()
+	case TOKEN_SEP_LCURLY: // { block }
+		return p.parseBlockStat()
 	case TOKEN_KW_BREAK: // BreakStat
 		return p.parseBreakStat()
 	case TOKEN_KW_CONTINUE: // ContinueStat
@@ -49,6 +51,13 @@ func (p *Parser) parseEmptyStat() *EmptyStat {
 	return emptyStat
 }
 
+func (p *Parser) parseBlockStat() *BlockStat {
+	p.lexer.NextTokenOfType(TOKEN_SEP_LCURLY)
+	block := &BlockStat{Block: p.parseBlock()}
+	p.lexer.NextTokenOfType(TOKEN_SEP_RCURLY)
+	return block
+}
+
 // break
 func (p *Parser) parseBreakStat() *BreakStat {
 	p.lexer.NextTokenOfType(TOKEN_KW_BREAK)
@@ -70,10 +79,13 @@ func (p *Parser) parseWhileStat() *LoopStat {
 	p.lexer.NextTokenOfType(TOKEN_KW_WHILE) // while
 	peeks := p.lexer.PeekTokenOfType(TOKEN_SEP_LCURLY)
 
-	var assignList []Assignment
+	var initList []Statement
 	if count := TOKEN_SEP_SEMI.CountIn(peeks...); count > 0 {
 		for ; count > 0; count-- {
-			assignList = append(assignList, p.parseAssignOrFuncCallAsn())
+			stat := p.parseAssignOrLocVarDeclOrFuncCallStat()
+			if stat != nil {
+				initList = append(initList, stat)
+			}
 			p.lexer.NextTokenOfType(TOKEN_SEP_SEMI) // ;
 		}
 	}
@@ -82,10 +94,10 @@ func (p *Parser) parseWhileStat() *LoopStat {
 	block := p.parseBlock()                   // block
 	p.lexer.NextTokenOfType(TOKEN_SEP_RCURLY) // }
 	return &LoopStat{
-		AsnList: assignList,
-		Exp:     exp,
-		StepAsn: nil,
-		Block:   block,
+		InitList: initList,
+		Exp:      exp,
+		StepStat: nil,
+		Block:    block,
 	}
 }
 
@@ -125,10 +137,13 @@ func (p *Parser) parseSubIfStat() *SubIfStat {
 	p.lexer.NextTokenOfType(TOKEN_KW_IF) // if
 	peeks := p.lexer.PeekTokenOfType(TOKEN_SEP_LCURLY)
 
-	var assignList []Assignment
+	var initList []Statement
 	if count := TOKEN_SEP_SEMI.CountIn(peeks...); count > 0 {
 		for ; count > 0; count-- {
-			assignList = append(assignList, p.parseAssignOrFuncCallAsn())
+			stat := p.parseAssignOrLocVarDeclOrFuncCallStat()
+			if stat != nil {
+				initList = append(initList, stat)
+			}
 			p.lexer.NextTokenOfType(TOKEN_SEP_SEMI) // ;
 		}
 	}
@@ -137,9 +152,9 @@ func (p *Parser) parseSubIfStat() *SubIfStat {
 	block := p.parseBlock()                   // block
 	p.lexer.NextTokenOfType(TOKEN_SEP_RCURLY) // }
 	return &SubIfStat{
-		AsnList: assignList,
-		Exp:     exp,
-		Block:   block,
+		InitList: initList,
+		Exp:      exp,
+		Block:    block,
 	}
 }
 
@@ -158,22 +173,22 @@ func (p *Parser) parseForStat() Statement {
 // for for assignment ';' exp ';' assignment '{' block '}'
 // => while assignment ';' exp {' block assignment '}'
 func (p *Parser) parseForNumStat() *LoopStat {
-	p.lexer.NextTokenOfType(TOKEN_KW_FOR)   // for
-	initAsn := p.parseAssignOrFuncCallAsn() // assignment
-	p.lexer.NextTokenOfType(TOKEN_SEP_SEMI) // ;
-	limitExp := p.parseExp()                // exp
-	p.lexer.NextTokenOfType(TOKEN_SEP_SEMI) // ;
-	stepAsn := p.parseAssignOrFuncCallAsn() // assignment
+	p.lexer.NextTokenOfType(TOKEN_KW_FOR)                 // for
+	initStat := p.parseAssignOrLocVarDeclOrFuncCallStat() // assignment
+	p.lexer.NextTokenOfType(TOKEN_SEP_SEMI)               // ;
+	limitExp := p.parseExp()                              // exp
+	p.lexer.NextTokenOfType(TOKEN_SEP_SEMI)               // ;
+	stepStat := p.parseAssignOrLocVarDeclOrFuncCallStat() // assignment
 
 	p.lexer.NextTokenOfType(TOKEN_SEP_LCURLY) // {
 	block := p.parseBlock()                   // block
 	p.lexer.NextTokenOfType(TOKEN_SEP_RCURLY) // }
 
 	return &LoopStat{
-		AsnList: []Assignment{initAsn},
-		Exp:     limitExp,
-		StepAsn: stepAsn,
-		Block:   block,
+		InitList: []Statement{initStat},
+		Exp:      limitExp,
+		StepStat: stepStat,
+		Block:    block,
 	}
 }
 
@@ -217,17 +232,6 @@ func (p *Parser) parseLocAssignOrLocFuncDefStat() Statement {
 	}
 }
 
-// local varlist '=' explist
-func (p *Parser) parseLocVarDeclStat() Statement {
-	return &AssignmentStat{Asn: p.parseLocVarDeclAsn()}
-}
-
-// varlist '=' explist
-// functioncall
-func (p *Parser) parseAssignOrFuncCallStat() Statement {
-	return &AssignmentStat{Asn: p.parseAssignOrFuncCallAsn()}
-}
-
 // func f() {}          =>  f = func() {}
 // func t.a.b.c.f() {}  =>  t.a.b.c.f = func() {}
 // func t.a.b.c:f() {}  =>  t.a.b.c.f = func(self) {}
@@ -247,12 +251,12 @@ func (p *Parser) parseLocalFuncDefStat() *Statements {
 	exp := p.parseFuncDefExp()              // funcbody
 	lastLine := p.lexer.Line()
 
-	decl := &LocVarDeclAsn{
+	decl := &LocVarDeclStat{
 		LastLine: name.Line,
 		NameList: []string{name.Literal},
 	}
 
-	assign := &AssignAsn{
+	assign := &AssignmentStat{
 		LastLine: lastLine,
 		VarList: []Expression{NameExp{
 			Line: name.Line,
@@ -263,8 +267,8 @@ func (p *Parser) parseLocalFuncDefStat() *Statements {
 
 	return &Statements{
 		StatList: []Statement{
-			&AssignmentStat{Asn: decl},
-			&AssignmentStat{Asn: assign},
+			decl,
+			assign,
 		},
 	}
 }
@@ -285,11 +289,9 @@ func (p *Parser) parseFuncDefStat() *AssignmentStat {
 	}
 
 	return &AssignmentStat{
-		Asn: &AssignAsn{
-			LastLine: fdExp.Line,
-			VarList:  []Expression{fnExp},
-			ExpList:  []Expression{fdExp},
-		},
+		LastLine: fdExp.Line,
+		VarList:  []Expression{fnExp},
+		ExpList:  []Expression{fdExp},
 	}
 }
 
@@ -323,4 +325,152 @@ func (p *Parser) parseFuncName() (Expression, bool) {
 	}
 
 	return exp, hasColon
+}
+
+func (p *Parser) parseAssignOrLocVarDeclOrFuncCallStat() Statement {
+	switch p.lexer.PeekToken().Type {
+	case TOKEN_KW_LOCAL:
+		return p.parseLocVarDeclStat()
+	case TOKEN_IDENTIFIER, TOKEN_STRING, TOKEN_NUMBER, TOKEN_SEP_LPAREN:
+		prefixExp := p.parsePrefixExp()
+		if fc, ok := prefixExp.(*FuncCallExp); ok {
+			return fc
+		} else {
+			return p.parseAssignmentStat(prefixExp)
+		}
+	default:
+		return nil
+	}
+
+}
+
+// varlist '=' explist
+// functioncall
+func (p *Parser) parseAssignOrFuncCallStat() Statement {
+	prefixExp := p.parsePrefixExp()
+	if fc, ok := prefixExp.(*FuncCallExp); ok {
+		return fc
+	} else {
+		return p.parseAssignmentStat(prefixExp)
+	}
+}
+
+// local namelist ['=' explist]
+func (p *Parser) parseLocVarDeclStat() *LocVarDeclStat {
+	p.lexer.NextTokenOfType(TOKEN_KW_LOCAL) // local
+	names := p.parseNameList()              // namelist
+	var exps []Expression
+	if p.lexer.PeekToken().Is(TOKEN_OP_ASSIGN) {
+		p.lexer.NextToken()     // =
+		exps = p.parseExpList() // explist
+	}
+	lastLine := p.lexer.Line()
+	return &LocVarDeclStat{
+		LastLine: lastLine,
+		NameList: names,
+		ExpList:  exps,
+	}
+}
+
+// varlist ('+=' | '-=' | '*=' | '/=' | '~/=' | '%='
+//		| '&=' | '^=' | '|=' | '**=' | '<<=' | '>>=' | '=' | ':=') explist
+func (p *Parser) parseAssignmentStat(var0 Expression) Statement {
+	varList := p.parseVarList(var0) // varlist
+	op := p.lexer.NextToken()       // operator
+	var expList []Expression
+	lastLine := p.lexer.Line()
+	if len(varList) > 1 {
+		if !op.Is(TOKEN_OP_ASSIGN, TOKEN_OP_LOCASSIGN) {
+			p.Error("too many variables on left: %s", varList)
+		} else {
+			expList = p.parseExpList() // explist
+		}
+	} else if len(varList) == 1 {
+		if op.Is(TOKEN_OP_ADDSELF, TOKEN_OP_SUBSELF) {
+			newop, _ := op.Change()
+			expList = []Expression{&BinopExp{
+				Op:   newop,
+				Exp1: varList[0],
+				Exp2: &IntegerExp{
+					Line: newop.Line,
+					Val:  1,
+				},
+			}}
+			op = &Token{op.Line, TOKEN_OP_ASSIGN, op.Literal}
+		} else {
+			expList = p.parseExpList() // explist
+			if newop, ok := op.Change(); ok {
+				if len(expList) > 1 {
+					p.Error("too many expressions on right: %s", expList)
+				} else {
+					expList = []Expression{&BinopExp{
+						Op:   newop,
+						Exp1: varList[0],
+						Exp2: expList[0],
+					}}
+					op = &Token{op.Line, TOKEN_OP_ASSIGN, op.Literal}
+				}
+			}
+		}
+	} else {
+		p.Error("no variable on left")
+	}
+
+	if op.Is(TOKEN_OP_LOCASSIGN) {
+		nameList := p.toName(varList...)
+		return &LocVarDeclStat{
+			LastLine: lastLine,
+			NameList: nameList,
+			ExpList:  expList,
+		}
+	} else if op.Is(TOKEN_OP_ASSIGN) {
+		return &AssignmentStat{
+			LastLine: lastLine,
+			VarList:  varList,
+			ExpList:  expList,
+		}
+	}
+	p.Error("invalid operator: %s", op)
+	panic("unreachable")
+}
+
+// varlist ::= var {',' var}
+func (p *Parser) parseVarList(varList ...Expression) []Expression {
+	var vars []Expression
+	for _, v := range varList {
+		vars = append(vars, p.checkVar(v))
+	}
+	if len(varList) == 0 {
+		exp := p.parsePrefixExp() // var
+		vars = append(vars, p.checkVar(exp))
+	}
+
+	for p.lexer.PeekToken().Is(TOKEN_SEP_COMMA) {
+		p.lexer.NextToken()       // ,
+		exp := p.parsePrefixExp() // var
+		vars = append(vars, p.checkVar(exp))
+	}
+	return vars
+}
+
+// var ::=  Name | prefixexp '[' Expression ']' | prefixexp '.' Name
+func (p *Parser) checkVar(exp Expression) Expression {
+	switch exp.(type) {
+	case *NameExp, *TableAccessExp:
+		return exp
+	}
+	p.Error("not a variable: %s", exp)
+	panic("unreachable")
+}
+
+func (p *Parser) toName(expList ...Expression) []string {
+	var nameList []string
+	for _, exp := range expList {
+		if name, ok := exp.(*NameExp); ok {
+			nameList = append(nameList, name.Name)
+		} else {
+			p.Error("not a identifer: %s", exp)
+		}
+	}
+	return nameList
 }
