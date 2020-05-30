@@ -51,6 +51,8 @@ func lineOf(exp Expression) int {
 		return lineOf(x.PrefixExp)
 	case *BinopExp:
 		return lineOf(x.Exp1)
+	case *LogicalExp:
+		return lineOf(x.ExpList[0])
 	default:
 		panic("unreachable!")
 	}
@@ -86,6 +88,8 @@ func lastLineOf(exp Expression) int {
 		return lastLineOf(x.Exp2)
 	case *UnopExp:
 		return lastLineOf(x.Exp)
+	case *LogicalExp:
+		return lastLineOf(x.ExpList[len(x.ExpList)-1])
 	default:
 		panic("unreachable!")
 	}

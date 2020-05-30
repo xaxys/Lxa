@@ -152,6 +152,10 @@ type LogicalExp struct {
 	ExpList []Expression
 }
 
+func (exp *LogicalExp) String() string {
+	return fmt.Sprintf("LogicalExp, ExpList: %s", exp.ExpList)
+}
+
 // exp1 op exp2
 type BinopExp struct {
 	NoBoolExpression

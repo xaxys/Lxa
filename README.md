@@ -14,7 +14,7 @@ WARNING! Please expect breaking changes and unstable APIs. Most of them are curr
   * Use Official lua 5.3.5 vm (written in c) as default vm.
   * Added inner go lua vm as a option (several stdlib unsupported yet).
   * Added 'Compile Only' option to output compiled lua bytecode (since v0.2.0).
-  * Added linux support and x86 support (auto select static lib when compiling) (untested). 
+  * Added linux support and x86 support (auto select static lib when compiling) (untested).
 * 2020/03/26 Released Lxa v0.2.4.
   * Added Debug option to display details in running.
   * Added 'Parse Only' option to watch bytecode instructions.
@@ -28,6 +28,8 @@ WARNING! Please expect breaking changes and unstable APIs. Most of them are curr
   * Removed `Assignment` from ast.
   * Added `BlockStat` for sub code block in syntax.
   * Fixed bug caused by `EmptyStat` in `ForNumStat`, `WhileStat` and `IfStat`.
+* Draft
+  * Fixed bug of `LogicalExp` in `IfStat` generation.
 
 ## Syntax
 
@@ -41,7 +43,7 @@ Free-style Code, basically the same as Lua.
 
 `;` is not necessary in the end of a sentence.
 
-`\n` will be recognized as equal as `;`. 
+`\n` will be recognized as equal as `;`.
 
 `&&`,`||`,`!` can be also used as `and`, `or`,`not`
 
@@ -89,11 +91,11 @@ The second go-like statement is also supported which performs the same.
 
 ```lua
 if a := 1; b := 2; testfunc(); a < b {
-	a++
+    a++
 } else if c := a; c != d {
-	print("c != d")
+    print("c != d")
 } else {
-	print('else')
+    print('else')
 }
 ```
 
@@ -105,11 +107,11 @@ The local variable declared by assignments can only be used inside 'if'.
 
 ```lua
 while a := 0; a < 100 {
-	a++
+    a++
     if a > 50 {
-		break
-	}
-} 
+        break
+    }
+}
 ```
 
 The same as 'if' statement, a 'while' statement can contain multiple assignment(or function call) before the expression, separated by `;`.
@@ -118,7 +120,7 @@ The same as 'if' statement, a 'while' statement can contain multiple assignment(
 
 ```lua
 for i := 0; i < 100; i++ {
-	print(i)
+    print(i)
     continue
     print("unreachable")
 }
@@ -144,16 +146,16 @@ Lxa removed `goto` and `repeat-until` from syntax. But `continue` is added to sy
 
 ```lua
 func add(a, b) {
-	return a + b
+    return a + b
 }
 local sub(a, b) {
-	return a - b
+    return a - b
 }
 mul = func(a, b) {
-	return a * b
+    return a * b
 }
 div := (a, b) => {
-	return a / b
+    return a / b
 }
 ```
 
@@ -165,7 +167,7 @@ Other Lua feature are supported.
 
 ### EBNF
 
-```
+```ebnf
 chunk ::= block
 
 block ::= {stat} [retstat]
@@ -178,30 +180,30 @@ var ::=  Name | prefixexp '[' exp ']' | prefixexp '.' Name
 assignment ::= assign | locvardecl | functioncall
 
 assign ::= varlist ('+=' | '-=' | '*=' | '/=' | '~/=' | '%='
-		| '&=' | '^=' | '|=' | '**=' | '<<=' | '>>=' | '=') explist
+        | '&=' | '^=' | '|=' | '**=' | '<<=' | '>>=' | '=') explist
 
 locvardecl ::= namelist ':=' explist | local namelist [':=' explist]
 
 exp ::=  nil
-	| false
-	| true
-	| Numeral
-	| LiteralString
-	| '...'
-	| functiondef
-	| functioncall
-	| prefixexp
-	| tableconstructor
-	| exp binop exp
-	| unop exp
-	| varlist ['=' explist]
-	| namelist ':=' explist
+    | false
+    | true
+    | Numeral
+    | LiteralString
+    | '...'
+    | functiondef
+    | functioncall
+    | prefixexp
+    | tableconstructor
+    | exp binop exp
+    | unop exp
+    | varlist ['=' explist]
+    | namelist ':=' explist
 
 prefixexp ::= var
-	| functioncall
-	| '(' exp ')'
-	| prefixexp ':' Name args
-	| prefixexp args
+    | functioncall
+    | '(' exp ')'
+    | prefixexp ':' Name args
+    | prefixexp args
 
 functioncall ::=  prefixexp args | prefixexp ':' Name args
 
@@ -217,15 +219,15 @@ parlist ::= namelist [',' '...'] | '...'
 namelist ::= Name {',' Name}
 
 stat ::= ';'
-	| assignment ';'
-	| break
-	| continue
-	| while {assignment ';'} exp '{' block '}'
-	| if {assignment ';'} exp '{' block '}' {else if {assignment ';'} exp '{' block '}'} [else '{' block '}']
-	| for assignment ';' exp ';' assignment '{' block '}'
-	| for namelist in explist '{' block '}'
-	| func funcname funcbody
-	| local func Name funcbody
+    | assignment ';'
+    | break
+    | continue
+    | while {assignment ';'} exp '{' block '}'
+    | if {assignment ';'} exp '{' block '}' {else if {assignment ';'} exp '{' block '}'} [else '{' block '}']
+    | for assignment ';' exp ';' assignment '{' block '}'
+    | for namelist in explist '{' block '}'
+    | func funcname funcbody
+    | local func Name funcbody
 ```
 
 ## About
